@@ -1,12 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Lock, Eye, Loader2, CheckCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Lock, Eye, CheckCircle, AlertCircle, Bitcoin, Shield, Wallet } from "lucide-react";
 import { useAccount, useSendTransaction } from "@starknet-react/core";
-import { Button } from "@/components/ui/button";
 import { useAuctionContract, useAuctionState, useUserCommitment } from "@/hooks/use-auction-contract";
 import { computeBidCommitment, generateNonce } from "@/lib/crypto";
+import {
+  GlassCard,
+  GlassCardHeader,
+  GlassCardTitle,
+  GlassCardDescription,
+  GlassCardContent,
+} from "@/components/ui/glass-card";
+import { GlowButton } from "@/components/ui/glow-button";
+import { GlowInput } from "@/components/ui/glow-input";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 // Local storage key for saving bid data
 const BID_STORAGE_KEY = "veilbid_pending_bid";
@@ -47,7 +56,7 @@ export function BidForm() {
   const { address, isConnected } = useAccount();
   const { contract } = useAuctionContract();
   const { phase, hasAuction } = useAuctionState();
-  const { hasCommitted, isLoading: loadingCommitment } = useUserCommitment(address);
+  const { hasCommitted } = useUserCommitment(address);
   const { sendAsync, isPending } = useSendTransaction({});
 
   const [bidAmount, setBidAmount] = useState("");
@@ -120,148 +129,248 @@ export function BidForm() {
 
   if (!isConnected) {
     return (
-      <div className="text-center text-purple-300 py-4">
-        Connect your wallet to place a bid
-      </div>
+      <GlassCard variant="elevated" className="h-full">
+        <GlassCardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-veil-purple/10 flex items-center justify-center mb-4">
+            <Wallet className="w-7 h-7 text-veil-purple-light" />
+          </div>
+          <h3 className="text-lg font-medium text-veil-text mb-2">
+            Connect Wallet
+          </h3>
+          <p className="text-veil-text-muted text-sm">
+            Connect your wallet to place a bid
+          </p>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
   if (!hasAuction) {
-    return null;
+    return (
+      <GlassCard variant="elevated" className="h-full">
+        <GlassCardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-4">
+            <AlertCircle className="w-7 h-7 text-amber-400" />
+          </div>
+          <h3 className="text-lg font-medium text-veil-text mb-2">
+            No Active Auction
+          </h3>
+          <p className="text-veil-text-muted text-sm">
+            Create an auction first to start bidding
+          </p>
+        </GlassCardContent>
+      </GlassCard>
+    );
   }
 
   const isCommitPhase = phase === "commit";
   const isRevealPhase = phase === "reveal";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-md mx-auto"
-    >
-      <div className="bg-gray-900/50 backdrop-blur-sm border border-purple-500/20 rounded-2xl p-6 space-y-4">
-        {/* Commit Phase UI */}
-        {isCommitPhase && (
-          <>
-            <div className="flex items-center gap-2 text-blue-400">
-              <Lock className="w-5 h-5" />
-              <h3 className="text-lg font-semibold">Place Your Sealed Bid</h3>
-            </div>
-
-            {hasCommitted ? (
-              <div className="flex items-center gap-2 text-green-400 bg-green-900/20 rounded-lg p-4">
-                <CheckCircle className="w-5 h-5" />
-                <span>You have already committed a bid. Wait for reveal phase.</span>
-              </div>
+    <GlassCard variant="elevated" className="h-full">
+      <GlassCardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {isCommitPhase ? (
+              <Lock className="w-5 h-5 text-blue-400" />
+            ) : isRevealPhase ? (
+              <Eye className="w-5 h-5 text-veil-purple-light" />
             ) : (
-              <>
-                <p className="text-purple-300 text-sm">
-                  Your bid is encrypted until the reveal phase. Enter your bid amount in satoshis (wBTC).
-                </p>
+              <CheckCircle className="w-5 h-5 text-emerald-400" />
+            )}
+            <GlassCardTitle className="text-lg">
+              {isCommitPhase
+                ? "Place Sealed Bid"
+                : isRevealPhase
+                ? "Reveal Your Bid"
+                : "Auction Ended"}
+            </GlassCardTitle>
+          </div>
+          {isCommitPhase && (
+            <StatusBadge variant="commit" size="sm" icon>
+              Private
+            </StatusBadge>
+          )}
+        </div>
+        <GlassCardDescription>
+          {isCommitPhase
+            ? "Your bid stays hidden until reveal phase"
+            : isRevealPhase
+            ? "Reveal your bid for verification"
+            : "Check the results above"}
+        </GlassCardDescription>
+      </GlassCardHeader>
 
-                <div>
-                  <label className="block text-sm text-purple-300 mb-1">
-                    Bid Amount (satoshis)
-                  </label>
-                  <input
+      <GlassCardContent className="space-y-4">
+        {/* Commit Phase UI */}
+        <AnimatePresence mode="wait">
+          {isCommitPhase && (
+            <motion.div
+              key="commit"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-4"
+            >
+              {hasCommitted ? (
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                  <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-sm font-medium text-emerald-400">
+                      Bid Committed
+                    </div>
+                    <div className="text-xs text-emerald-400/70 mt-1">
+                      Wait for the reveal phase to reveal your bid.
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <GlowInput
                     type="number"
                     min={1}
                     value={bidAmount}
                     onChange={(e) => setBidAmount(e.target.value)}
-                    placeholder="e.g., 100000"
-                    className="w-full bg-gray-800 border border-purple-500/30 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-400"
+                    placeholder="100000"
+                    label="Bid Amount"
+                    suffix="sats"
+                    leftIcon={<Bitcoin className="w-4 h-4 text-[#F7931A]" />}
+                    hint="Enter your bid in satoshis"
+                    variant="glow"
                   />
-                </div>
 
-                <Button
-                  onClick={handleCommit}
-                  disabled={isPending || !bidAmount}
-                  className="w-full bg-blue-600 hover:bg-blue-500 text-white"
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Committing...
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-4 h-4 mr-2" />
-                      Commit Bid
-                    </>
-                  )}
-                </Button>
-              </>
-            )}
-          </>
-        )}
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-veil-surface/50 border border-veil-border/50">
+                    <Shield className="w-4 h-4 text-veil-purple-light flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-veil-text-dim">
+                      Your bid is cryptographically hidden. Only you know the
+                      amount until the reveal phase.
+                    </p>
+                  </div>
 
-        {/* Reveal Phase UI */}
-        {isRevealPhase && (
-          <>
-            <div className="flex items-center gap-2 text-purple-400">
-              <Eye className="w-5 h-5" />
-              <h3 className="text-lg font-semibold">Reveal Your Bid</h3>
-            </div>
+                  <GlowButton
+                    onClick={handleCommit}
+                    loading={isPending}
+                    disabled={!bidAmount}
+                    className="w-full"
+                  >
+                    <Lock className="w-4 h-4" />
+                    Commit Sealed Bid
+                  </GlowButton>
+                </>
+              )}
+            </motion.div>
+          )}
 
-            {pendingBid ? (
-              <>
-                <div className="bg-gray-800/50 rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-purple-300">Your Bid</span>
-                    <span className="text-white font-mono">{pendingBid.bidAmount} sats</span>
+          {/* Reveal Phase UI */}
+          {isRevealPhase && (
+            <motion.div
+              key="reveal"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-4"
+            >
+              {pendingBid ? (
+                <>
+                  <div className="p-4 rounded-xl bg-veil-surface border border-veil-border">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm text-veil-text-muted">
+                        Your Committed Bid
+                      </span>
+                      <StatusBadge variant="reveal" size="sm">
+                        Ready to Reveal
+                      </StatusBadge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Bitcoin className="w-5 h-5 text-[#F7931A]" />
+                      <span className="text-2xl font-bold font-mono text-veil-text">
+                        {pendingBid.bidAmount}
+                      </span>
+                      <span className="text-veil-text-muted">sats</span>
+                    </div>
+                  </div>
+
+                  <GlowButton
+                    onClick={handleReveal}
+                    loading={isPending}
+                    variant="glow"
+                    className="w-full"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Reveal Bid
+                  </GlowButton>
+                </>
+              ) : hasCommitted ? (
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                  <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-sm font-medium text-amber-400">
+                      Reveal Data Not Found
+                    </div>
+                    <div className="text-xs text-amber-400/70 mt-1">
+                      You committed a bid but the reveal data was not found
+                      locally. Try refreshing if you committed from this browser.
+                    </div>
                   </div>
                 </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-veil-surface flex items-center justify-center">
+                    <Lock className="w-6 h-6 text-veil-text-dim" />
+                  </div>
+                  <p className="text-veil-text-muted text-sm">
+                    You did not commit a bid during the commit phase.
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          )}
 
-                <Button
-                  onClick={handleReveal}
-                  disabled={isPending}
-                  className="w-full bg-purple-600 hover:bg-purple-500 text-white"
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Revealing...
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="w-4 h-4 mr-2" />
-                      Reveal Bid
-                    </>
-                  )}
-                </Button>
-              </>
-            ) : hasCommitted ? (
-              <div className="text-yellow-400 bg-yellow-900/20 rounded-lg p-4">
-                You committed a bid but the reveal data was not found locally.
-                If you committed from this browser, try refreshing.
+          {/* Ended/Settled Phase */}
+          {(phase === "ended" || phase === "settled") && (
+            <motion.div
+              key="ended"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="text-center py-8"
+            >
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-emerald-400" />
               </div>
-            ) : (
-              <div className="text-purple-300 text-center py-4">
-                You did not commit a bid during the commit phase.
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Ended/Settled Phase */}
-        {(phase === "ended" || phase === "settled") && (
-          <div className="text-center text-purple-300 py-4">
-            The auction has ended. Check the results above.
-          </div>
-        )}
+              <p className="text-veil-text-muted text-sm">
+                The auction has ended. Check the results above.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Messages */}
-        {error && (
-          <div className="text-red-400 text-sm bg-red-900/20 rounded-lg p-3">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="text-green-400 text-sm bg-green-900/20 rounded-lg p-3">
-            {success}
-          </div>
-        )}
-      </div>
-    </motion.div>
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30"
+            >
+              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-400">{error}</p>
+            </motion.div>
+          )}
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30"
+            >
+              <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-emerald-400">{success}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </GlassCardContent>
+    </GlassCard>
   );
 }

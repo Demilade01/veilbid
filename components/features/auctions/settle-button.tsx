@@ -1,11 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Trophy, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Trophy, AlertCircle, CheckCircle } from "lucide-react";
 import { useAccount, useSendTransaction } from "@starknet-react/core";
-import { Button } from "@/components/ui/button";
 import { useAuctionContract, useAuctionState } from "@/hooks/use-auction-contract";
+import {
+  GlassCard,
+  GlassCardHeader,
+  GlassCardTitle,
+  GlassCardDescription,
+  GlassCardContent,
+} from "@/components/ui/glass-card";
+import { GlowButton } from "@/components/ui/glow-button";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 export function SettleButton() {
   const { isConnected } = useAccount();
@@ -14,6 +22,7 @@ export function SettleButton() {
   const { sendAsync, isPending } = useSendTransaction({});
 
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const handleSettle = async () => {
     if (!contract || !isConnected) return;
@@ -22,6 +31,7 @@ export function SettleButton() {
     try {
       const call = contract.populate("settle", []);
       await sendAsync([call]);
+      setSuccess(true);
     } catch (err) {
       console.error("Settle error:", err);
       setError(err instanceof Error ? err.message : "Failed to settle auction");
@@ -34,45 +44,68 @@ export function SettleButton() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-md mx-auto"
-    >
-      <div className="bg-gray-900/50 backdrop-blur-sm border border-orange-500/20 rounded-2xl p-6 space-y-4">
-        <div className="flex items-center gap-2 text-orange-400">
-          <Trophy className="w-5 h-5" />
-          <h3 className="text-lg font-semibold">Settle Auction</h3>
+    <GlassCard variant="elevated" className="border-amber-500/20">
+      <GlassCardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-amber-400" />
+            <GlassCardTitle className="text-lg">Settle Auction</GlassCardTitle>
+          </div>
+          <StatusBadge variant="ended" size="sm" icon pulse>
+            Ready
+          </StatusBadge>
+        </div>
+        <GlassCardDescription>
+          Finalize the auction and declare the winner
+        </GlassCardDescription>
+      </GlassCardHeader>
+
+      <GlassCardContent className="space-y-4">
+        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <p className="text-sm text-amber-200">
+            The reveal phase has ended. Anyone can settle the auction to
+            finalize the winner and complete the auction.
+          </p>
         </div>
 
-        <p className="text-purple-300 text-sm">
-          The reveal phase has ended. Anyone can settle the auction to finalize the winner.
-        </p>
-
-        {error && (
-          <div className="text-red-400 text-sm bg-red-900/20 rounded-lg p-3">
-            {error}
-          </div>
-        )}
-
-        <Button
-          onClick={handleSettle}
-          disabled={isPending || !isConnected}
-          className="w-full bg-orange-600 hover:bg-orange-500 text-white"
-        >
-          {isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Settling...
-            </>
-          ) : (
-            <>
-              <Trophy className="w-4 h-4 mr-2" />
-              Settle Auction
-            </>
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30"
+            >
+              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-400">{error}</p>
+            </motion.div>
           )}
-        </Button>
-      </div>
-    </motion.div>
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30"
+            >
+              <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-emerald-400">
+                Auction settled successfully!
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <GlowButton
+          onClick={handleSettle}
+          loading={isPending}
+          disabled={!isConnected || success}
+          variant="btc"
+          className="w-full"
+        >
+          <Trophy className="w-4 h-4" />
+          {success ? "Settled" : "Settle Auction"}
+        </GlowButton>
+      </GlassCardContent>
+    </GlassCard>
   );
 }
