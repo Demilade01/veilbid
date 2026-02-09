@@ -114,14 +114,21 @@ export function useAuctionState() {
     const commitEndNum = Number(commitEnd);
     const revealEndNum = Number(revealEnd);
     
-    // No auction created yet
-    if (commitEndNum === 0) return "none";
+    // No auction created yet (contract returns 0 for uninitialized values)
+    if (commitEndNum === 0 && revealEndNum === 0) return "none";
     
     const now = Math.floor(Date.now() / 1000);
     
+    // Check phases in order
     if (now < commitEndNum) return "commit";
     if (now < revealEndNum) return "reveal";
+    
+    // If auction has been settled, show settled status
+    // Note: With the updated contract, settle() will reset timestamps to 0
+    // But for backward compatibility with old contract deployments, we handle both
     if (settled) return "settled";
+    
+    // Auction ended but not yet settled
     return "ended";
   }, [commitEnd, revealEnd, settled]);
 
@@ -135,7 +142,8 @@ export function useAuctionState() {
     phase,
     isLoading,
     hasError: Boolean(hasError),
-    hasAuction: phase !== "none" && phase !== "loading",
+    // Only consider auction "active" if it's in commit, reveal, or ended (not settled) phase
+    hasAuction: phase === "commit" || phase === "reveal" || phase === "ended",
   };
 }
 

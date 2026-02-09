@@ -18,7 +18,7 @@ import { GlowInput } from "@/components/ui/glow-input";
 export function CreateAuctionForm() {
   const { isConnected } = useAccount();
   const { contract } = useAuctionContract();
-  const { hasAuction, isLoading: loadingState } = useAuctionState();
+  const { hasAuction, phase, isLoading: loadingState } = useAuctionState();
   const { sendAsync, isPending } = useSendTransaction({});
 
   const [commitMinutes, setCommitMinutes] = useState("5");
@@ -85,15 +85,25 @@ export function CreateAuctionForm() {
   }
 
   if (hasAuction) {
+    const isEnded = phase === "ended";
+    const isSettled = phase === "settled";
+    
     return (
       <GlassCard variant="elevated">
         <GlassCardContent className="flex flex-col items-center justify-center py-8 text-center">
           <div className="w-12 h-12 rounded-xl bg-veil-purple/10 flex items-center justify-center mb-3">
             <AlertCircle className="w-6 h-6 text-veil-purple-light" />
           </div>
-          <p className="text-veil-text font-medium mb-1">Auction Active</p>
+          <p className="text-veil-text font-medium mb-1">
+            {isSettled ? "Contract Needs Upgrade" : isEnded ? "Auction Awaiting Settlement" : "Auction Active"}
+          </p>
           <p className="text-veil-text-muted text-sm">
-            An auction already exists. Wait for it to settle before creating a new one.
+            {isSettled 
+              ? "This contract is using an old version that doesn't allow creating new auctions after settlement. Please deploy the updated contract."
+              : isEnded 
+              ? "The auction has ended. Call settle() to finalize it and allow new auctions."
+              : "An auction is currently in progress. Wait for it to end and settle before creating a new one."
+            }
           </p>
         </GlassCardContent>
       </GlassCard>
