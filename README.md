@@ -66,7 +66,7 @@ Create a `.env.local` file in the root directory:
 
 ```env
 # Contract address on Starknet Sepolia
-NEXT_PUBLIC_AUCTION_CONTRACT_ADDRESS=0x00a2d92d7eca591f2bd0ebf2f46571d47adfe24dcf94de9e11ae27cf8a30b24e
+NEXT_PUBLIC_AUCTION_CONTRACT_ADDRESS=0x00.....
 
 # Optional: Custom RPC URL (Alchemy, Infura, or your own node)
 NEXT_PUBLIC_STARKNET_RPC_URL=https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_7/YOUR_API_KEY
