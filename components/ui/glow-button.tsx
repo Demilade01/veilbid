@@ -2,25 +2,24 @@
 
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Slot } from "radix-ui";
-import { motion } from "framer-motion";
+import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 
 const glowButtonVariants = cva(
-  "relative inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all duration-300 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-veil-purple/50",
+  "relative inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all duration-300 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50",
   {
     variants: {
       variant: {
         default:
-          "bg-veil-gradient-purple text-white rounded-xl hover:glow-md active:scale-[0.98]",
+          "bg-gradient-to-r from-purple-600 to-purple-800 text-white rounded-xl hover:shadow-[0_0_20px_rgba(147,51,234,0.5)] active:scale-[0.98]",
         secondary:
-          "bg-veil-surface border border-veil-border text-veil-text-muted rounded-xl hover:border-veil-purple/40 hover:text-veil-text hover:glow-sm active:scale-[0.98]",
+          "bg-gray-900/80 border border-purple-500/30 text-purple-200 rounded-xl hover:border-purple-500/50 hover:text-white hover:shadow-[0_0_15px_rgba(147,51,234,0.3)] active:scale-[0.98]",
         outline:
-          "border border-veil-purple/30 bg-transparent text-veil-purple-light rounded-xl hover:bg-veil-purple/10 hover:border-veil-purple/50 hover:glow-sm active:scale-[0.98]",
+          "border border-purple-500/30 bg-transparent text-purple-300 rounded-xl hover:bg-purple-500/10 hover:border-purple-500/50 active:scale-[0.98]",
         ghost:
-          "bg-transparent text-veil-text-muted rounded-xl hover:bg-veil-purple/10 hover:text-veil-text active:scale-[0.98]",
-        glow: "bg-veil-gradient-purple text-white rounded-xl glow-purple hover:glow-lg active:scale-[0.98] animate-glow-pulse",
-        btc: "bg-gradient-to-r from-[#F7931A] to-[#E8850E] text-white rounded-xl hover:glow-btc active:scale-[0.98]",
+          "bg-transparent text-purple-300 rounded-xl hover:bg-purple-500/10 hover:text-white active:scale-[0.98]",
+        glow: "bg-gradient-to-r from-purple-600 to-purple-800 text-white rounded-xl shadow-[0_0_25px_rgba(147,51,234,0.6)] hover:shadow-[0_0_35px_rgba(147,51,234,0.8)] active:scale-[0.98]",
+        btc: "bg-gradient-to-r from-[#F7931A] to-[#E8850E] text-white rounded-xl hover:shadow-[0_0_20px_rgba(247,147,26,0.5)] active:scale-[0.98]",
         success:
           "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl hover:shadow-[0_0_25px_rgba(16,185,129,0.4)] active:scale-[0.98]",
         destructive:
@@ -45,87 +44,68 @@ const glowButtonVariants = cva(
 );
 
 export interface GlowButtonProps
-  extends VariantProps<typeof glowButtonVariants> {
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof glowButtonVariants> {
   asChild?: boolean;
   loading?: boolean;
-  children?: React.ReactNode;
-  className?: string;
-  disabled?: boolean;
-  onClick?: React.MouseEventHandler<HTMLButtonElement>;
-  type?: "button" | "submit" | "reset";
 }
 
 const LoadingSpinner = () => (
-  <>
-    <svg
-      className="animate-spin -ml-1 mr-2 h-4 w-4"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-      />
-    </svg>
-    Loading...
-  </>
+  <svg
+    className="animate-spin h-4 w-4"
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+  >
+    <circle
+      className="opacity-25"
+      cx="12"
+      cy="12"
+      r="10"
+      stroke="currentColor"
+      strokeWidth="4"
+    />
+    <path
+      className="opacity-75"
+      fill="currentColor"
+      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+    />
+  </svg>
 );
 
 const GlowButton = React.forwardRef<HTMLButtonElement, GlowButtonProps>(
   (
     {
       className,
-      variant = "default",
-      size = "default",
+      variant,
+      size,
       asChild = false,
       loading = false,
-      children,
       disabled,
-      onClick,
-      type = "button",
+      children,
+      ...props
     },
     ref
   ) => {
+    const Comp = asChild ? Slot : "button";
     const isDisabled = disabled || loading;
-    const buttonClassName = cn(glowButtonVariants({ variant, size, className }));
-    const content = loading ? <LoadingSpinner /> : children;
 
-    // Use Slot for asChild (no motion animations)
-    if (asChild) {
-      return (
-        <Slot.Root
-          ref={ref}
-          className={buttonClassName}
-        >
-          {content}
-        </Slot.Root>
-      );
-    }
-
-    // Use motion.button for regular buttons
     return (
-      <motion.button
+      <Comp
+        className={cn(glowButtonVariants({ variant, size, className }))}
         ref={ref}
-        type={type}
-        className={buttonClassName}
         disabled={isDisabled}
-        onClick={onClick}
-        whileHover={{ scale: isDisabled ? 1 : 1.02 }}
-        whileTap={{ scale: isDisabled ? 1 : 0.98 }}
-        transition={{ type: "spring", stiffness: 400, damping: 17 }}
+        {...props}
       >
-        {content}
-      </motion.button>
+        {loading ? (
+          <>
+            <LoadingSpinner />
+            <span>Loading...</span>
+          </>
+        ) : (
+          children
+        )}
+      </Comp>
     );
   }
 );
