@@ -145,6 +145,13 @@ mod VeilBidAuction {
             let winner = self.winner.read();
             let amount = self.highest_bid.read();
             self.emit(AuctionSettled { winner, amount });
+            
+            // Reset auction state to allow creating a new auction
+            self.commit_end.write(0);
+            self.reveal_end.write(0);
+            self.highest_bid.write(0);
+            // Note: We keep winner and settled for historical record
+            // Creator and commitments map persist but will be overwritten in next auction
         }
 
         fn get_commit_end(self: @ContractState) -> u64 {
