@@ -1,9 +1,9 @@
 "use client";
 
-import { useContract, useReadContract, useSendTransaction } from "@starknet-react/core";
+import { useContract, useReadContract } from "@starknet-react/core";
 import { useMemo } from "react";
 import { VEILBID_AUCTION_ABI } from "@/lib/contracts";
-import { getAuctionContractAddress } from "@/lib/constants";
+import { getAuctionContractAddress, type HexString } from "@/lib/constants";
 
 /**
  * Hook to get the auction contract instance
@@ -23,7 +23,7 @@ export function useAuctionContract() {
  * Hook to read auction state from the contract
  */
 export function useAuctionState() {
-  const address = getAuctionContractAddress();
+  const address: HexString | undefined = getAuctionContractAddress();
 
   const { data: commitEnd, isLoading: loadingCommitEnd } = useReadContract({
     abi: VEILBID_AUCTION_ABI,
@@ -115,8 +115,8 @@ export function useAuctionState() {
 /**
  * Hook to check if the current user has committed a bid
  */
-export function useUserCommitment(userAddress: string | undefined) {
-  const address = getAuctionContractAddress();
+export function useUserCommitment(userAddress: HexString | undefined) {
+  const address: HexString | undefined = getAuctionContractAddress();
 
   const { data: commitment, isLoading } = useReadContract({
     abi: VEILBID_AUCTION_ABI,
