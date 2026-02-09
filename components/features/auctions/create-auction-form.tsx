@@ -1,20 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Plus, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Clock, AlertCircle, Loader2, Wallet } from "lucide-react";
 import { useAccount, useSendTransaction } from "@starknet-react/core";
-import { Button } from "@/components/ui/button";
 import { useAuctionContract, useAuctionState } from "@/hooks/use-auction-contract";
+import {
+  GlassCard,
+  GlassCardHeader,
+  GlassCardTitle,
+  GlassCardDescription,
+  GlassCardContent,
+} from "@/components/ui/glass-card";
+import { GlowButton } from "@/components/ui/glow-button";
+import { GlowInput } from "@/components/ui/glow-input";
 
 export function CreateAuctionForm() {
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const { contract } = useAuctionContract();
   const { hasAuction, isLoading: loadingState } = useAuctionState();
   const { sendAsync, isPending } = useSendTransaction({});
 
-  const [commitMinutes, setCommitMinutes] = useState(5);
-  const [revealMinutes, setRevealMinutes] = useState(5);
+  const [commitMinutes, setCommitMinutes] = useState("5");
+  const [revealMinutes, setRevealMinutes] = useState("5");
   const [error, setError] = useState<string | null>(null);
 
   const handleCreate = async () => {
@@ -23,8 +31,8 @@ export function CreateAuctionForm() {
 
     try {
       const now = Math.floor(Date.now() / 1000);
-      const commitEnd = now + commitMinutes * 60;
-      const revealEnd = commitEnd + revealMinutes * 60;
+      const commitEnd = now + Number(commitMinutes) * 60;
+      const revealEnd = commitEnd + Number(revealMinutes) * 60;
 
       const call = contract.populate("create_auction", [commitEnd, revealEnd]);
       await sendAsync([call]);
@@ -36,87 +44,95 @@ export function CreateAuctionForm() {
 
   if (!isConnected) {
     return (
-      <div className="text-center text-purple-300 py-4">
-        Connect your wallet to create an auction
-      </div>
+      <GlassCard>
+        <GlassCardContent className="flex flex-col items-center justify-center py-8 text-center">
+          <div className="w-12 h-12 rounded-xl bg-veil-purple/10 flex items-center justify-center mb-3">
+            <Wallet className="w-6 h-6 text-veil-purple-light" />
+          </div>
+          <p className="text-veil-text-muted text-sm">
+            Connect wallet to create auction
+          </p>
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
   if (loadingState) {
     return (
-      <div className="flex items-center justify-center py-4">
-        <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
-      </div>
+      <GlassCard>
+        <GlassCardContent className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-veil-purple-light" />
+        </GlassCardContent>
+      </GlassCard>
     );
   }
 
   if (hasAuction) {
-    return null; // Don't show form if auction exists
+    return null;
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-md mx-auto"
-    >
-      <div className="bg-gray-900/50 backdrop-blur-sm border border-purple-500/20 rounded-2xl p-6 space-y-4">
-        <h3 className="text-lg font-semibold text-purple-200">Create New Auction</h3>
+    <GlassCard variant="elevated">
+      <GlassCardHeader>
+        <div className="flex items-center gap-2">
+          <Plus className="w-5 h-5 text-veil-purple-light" />
+          <GlassCardTitle className="text-lg">Create Auction</GlassCardTitle>
+        </div>
+        <GlassCardDescription>
+          Set up a new sealed-bid auction
+        </GlassCardDescription>
+      </GlassCardHeader>
 
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm text-purple-300 mb-1">
-              Commit Phase Duration (minutes)
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={60}
-              value={commitMinutes}
-              onChange={(e) => setCommitMinutes(Number(e.target.value))}
-              className="w-full bg-gray-800 border border-purple-500/30 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-400"
-            />
-          </div>
+      <GlassCardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <GlowInput
+            type="number"
+            min={1}
+            max={60}
+            value={commitMinutes}
+            onChange={(e) => setCommitMinutes(e.target.value)}
+            label="Commit Phase"
+            suffix="min"
+            leftIcon={<Clock className="w-4 h-4" />}
+            inputSize="sm"
+          />
 
-          <div>
-            <label className="block text-sm text-purple-300 mb-1">
-              Reveal Phase Duration (minutes)
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={60}
-              value={revealMinutes}
-              onChange={(e) => setRevealMinutes(Number(e.target.value))}
-              className="w-full bg-gray-800 border border-purple-500/30 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-400"
-            />
-          </div>
+          <GlowInput
+            type="number"
+            min={1}
+            max={60}
+            value={revealMinutes}
+            onChange={(e) => setRevealMinutes(e.target.value)}
+            label="Reveal Phase"
+            suffix="min"
+            leftIcon={<Clock className="w-4 h-4" />}
+            inputSize="sm"
+          />
         </div>
 
-        {error && (
-          <div className="text-red-400 text-sm bg-red-900/20 rounded-lg p-3">
-            {error}
-          </div>
-        )}
-
-        <Button
-          onClick={handleCreate}
-          disabled={isPending}
-          className="w-full bg-purple-600 hover:bg-purple-500 text-white"
-        >
-          {isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating...
-            </>
-          ) : (
-            <>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Auction
-            </>
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30"
+            >
+              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-400">{error}</p>
+            </motion.div>
           )}
-        </Button>
-      </div>
-    </motion.div>
+        </AnimatePresence>
+
+        <GlowButton
+          onClick={handleCreate}
+          loading={isPending}
+          className="w-full"
+        >
+          <Plus className="w-4 h-4" />
+          Create Auction
+        </GlowButton>
+      </GlassCardContent>
+    </GlassCard>
   );
 }

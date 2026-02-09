@@ -1,31 +1,16 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Clock, Lock, Eye, Trophy, AlertCircle } from "lucide-react";
+import { Clock, Lock, Eye, Trophy, AlertCircle, User, Bitcoin, Loader2 } from "lucide-react";
 import { useAuctionState } from "@/hooks/use-auction-contract";
-
-function formatTimeRemaining(endTimestamp: number): string {
-  const now = Math.floor(Date.now() / 1000);
-  const diff = endTimestamp - now;
-  
-  if (diff <= 0) return "Ended";
-  
-  const hours = Math.floor(diff / 3600);
-  const minutes = Math.floor((diff % 3600) / 60);
-  const seconds = diff % 60;
-  
-  if (hours > 24) {
-    const days = Math.floor(hours / 24);
-    return `${days}d ${hours % 24}h`;
-  }
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-  if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
-  }
-  return `${seconds}s`;
-}
+import {
+  GlassCard,
+  GlassCardHeader,
+  GlassCardTitle,
+  GlassCardContent,
+} from "@/components/ui/glass-card";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { CountdownTimer } from "@/components/ui/countdown-timer";
 
 function formatTimestamp(timestamp: number): string {
   if (timestamp === 0) return "Not set";
@@ -38,12 +23,42 @@ function truncateAddress(address: string | undefined): string {
 }
 
 const phaseConfig = {
-  loading: { icon: Clock, color: "text-gray-400", bg: "bg-gray-800", label: "Loading..." },
-  none: { icon: AlertCircle, color: "text-yellow-400", bg: "bg-yellow-900/30", label: "No Active Auction" },
-  commit: { icon: Lock, color: "text-blue-400", bg: "bg-blue-900/30", label: "Commit Phase" },
-  reveal: { icon: Eye, color: "text-purple-400", bg: "bg-purple-900/30", label: "Reveal Phase" },
-  ended: { icon: Clock, color: "text-orange-400", bg: "bg-orange-900/30", label: "Awaiting Settlement" },
-  settled: { icon: Trophy, color: "text-green-400", bg: "bg-green-900/30", label: "Settled" },
+  loading: {
+    variant: "loading" as const,
+    icon: Loader2,
+    label: "Loading...",
+    description: "Fetching auction data",
+  },
+  none: {
+    variant: "warning" as const,
+    icon: AlertCircle,
+    label: "No Active Auction",
+    description: "Create an auction to get started",
+  },
+  commit: {
+    variant: "commit" as const,
+    icon: Lock,
+    label: "Commit Phase",
+    description: "Submit your sealed bid",
+  },
+  reveal: {
+    variant: "reveal" as const,
+    icon: Eye,
+    label: "Reveal Phase",
+    description: "Reveal your bid for verification",
+  },
+  ended: {
+    variant: "ended" as const,
+    icon: Clock,
+    label: "Awaiting Settlement",
+    description: "Auction ended, pending settlement",
+  },
+  settled: {
+    variant: "settled" as const,
+    icon: Trophy,
+    label: "Settled",
+    description: "Auction complete",
+  },
 };
 
 export function AuctionStatus() {
@@ -53,78 +68,143 @@ export function AuctionStatus() {
     creator,
     highestBid,
     winner,
-    settled,
     phase,
     isLoading,
     hasAuction,
   } = useAuctionState();
 
   const config = phaseConfig[phase as keyof typeof phaseConfig] || phaseConfig.loading;
-  const Icon = config.icon;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-2xl mx-auto"
+      className="w-full"
     >
-      <div className="bg-gray-900/50 backdrop-blur-sm border border-purple-500/20 rounded-2xl p-6 space-y-6">
-        {/* Phase Badge */}
-        <div className="flex items-center justify-between">
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${config.bg}`}>
-            <Icon className={`w-5 h-5 ${config.color}`} />
-            <span className={`font-semibold ${config.color}`}>{config.label}</span>
+      <GlassCard variant="glow" padding="lg">
+        {/* Header with Phase Badge */}
+        <GlassCardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <StatusBadge
+                variant={config.variant}
+                size="lg"
+                icon
+                glow
+                pulse={phase === "commit" || phase === "reveal"}
+              >
+                {config.label}
+              </StatusBadge>
+            </div>
+            {isLoading && (
+              <div className="flex items-center gap-2 text-veil-text-dim text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Refreshing...
+              </div>
+            )}
           </div>
-          {isLoading && (
-            <div className="animate-pulse text-purple-300 text-sm">Refreshing...</div>
+          <p className="text-veil-text-muted text-sm mt-2">{config.description}</p>
+        </GlassCardHeader>
+
+        <GlassCardContent>
+          {hasAuction ? (
+            <div className="space-y-6">
+              {/* Countdown Timers */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-veil-surface border border-veil-border">
+                  <div className="flex items-center gap-2 text-veil-text-muted text-sm mb-3">
+                    <Lock className="w-4 h-4 text-blue-400" />
+                    Commit Phase {phase === "commit" ? "Ends In" : "Ended"}
+                  </div>
+                  {phase === "commit" ? (
+                    <CountdownTimer
+                      endTimestamp={commitEnd}
+                      variant="default"
+                      showLabels={false}
+                    />
+                  ) : (
+                    <div className="text-veil-text font-mono text-sm">
+                      {formatTimestamp(commitEnd)}
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-xl bg-veil-surface border border-veil-border">
+                  <div className="flex items-center gap-2 text-veil-text-muted text-sm mb-3">
+                    <Eye className="w-4 h-4 text-veil-purple-light" />
+                    Reveal Phase {phase === "reveal" ? "Ends In" : phase === "commit" ? "Starts After Commit" : "Ended"}
+                  </div>
+                  {phase === "reveal" ? (
+                    <CountdownTimer
+                      endTimestamp={revealEnd}
+                      variant="default"
+                      showLabels={false}
+                    />
+                  ) : (
+                    <div className="text-veil-text font-mono text-sm">
+                      {formatTimestamp(revealEnd)}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Auction Details */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center py-3 px-4 rounded-xl bg-veil-surface/50 border border-veil-border/50">
+                  <div className="flex items-center gap-2 text-veil-text-muted">
+                    <User className="w-4 h-4" />
+                    <span>Creator</span>
+                  </div>
+                  <span className="text-veil-text font-mono text-sm">
+                    {truncateAddress(creator)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-3 px-4 rounded-xl bg-veil-surface/50 border border-veil-border/50">
+                  <div className="flex items-center gap-2 text-veil-text-muted">
+                    <Bitcoin className="w-4 h-4 text-[#F7931A]" />
+                    <span>Highest Bid</span>
+                  </div>
+                  <span className="text-veil-text font-mono text-sm">
+                    {highestBid > 0 ? (
+                      <span className="text-emerald-400">{highestBid.toString()} sats</span>
+                    ) : (
+                      <span className="text-veil-text-dim">No bids revealed</span>
+                    )}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center py-3 px-4 rounded-xl bg-veil-surface/50 border border-veil-border/50">
+                  <div className="flex items-center gap-2 text-veil-text-muted">
+                    <Trophy className="w-4 h-4 text-amber-400" />
+                    <span>Winner</span>
+                  </div>
+                  <span className="text-veil-text font-mono text-sm">
+                    {winner && winner !== "0x0" ? (
+                      <span className="text-emerald-400">{truncateAddress(winner)}</span>
+                    ) : (
+                      <span className="text-veil-text-dim">TBD</span>
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-veil-purple/10 flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-veil-purple-light" />
+              </div>
+              <h3 className="text-lg font-medium text-veil-text mb-2">
+                No Active Auction
+              </h3>
+              <p className="text-veil-text-muted text-sm max-w-sm mx-auto">
+                Connect your wallet and create an auction to get started with
+                privacy-preserving bidding.
+              </p>
+            </div>
           )}
-        </div>
-
-        {hasAuction ? (
-          <>
-            {/* Timing Info */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-800/50 rounded-xl p-4">
-                <div className="text-purple-300 text-sm mb-1">Commit Ends</div>
-                <div className="text-white font-mono text-lg">
-                  {phase === "commit" ? formatTimeRemaining(commitEnd) : formatTimestamp(commitEnd)}
-                </div>
-              </div>
-              <div className="bg-gray-800/50 rounded-xl p-4">
-                <div className="text-purple-300 text-sm mb-1">Reveal Ends</div>
-                <div className="text-white font-mono text-lg">
-                  {phase === "reveal" ? formatTimeRemaining(revealEnd) : formatTimestamp(revealEnd)}
-                </div>
-              </div>
-            </div>
-
-            {/* Auction Details */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center py-2 border-b border-purple-500/10">
-                <span className="text-purple-300">Creator</span>
-                <span className="text-white font-mono">{truncateAddress(creator)}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-purple-500/10">
-                <span className="text-purple-300">Highest Bid</span>
-                <span className="text-white font-mono">
-                  {highestBid > 0 ? `${highestBid.toString()} sats` : "No bids revealed"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-purple-300">Winner</span>
-                <span className="text-white font-mono">{truncateAddress(winner)}</span>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-purple-200 mb-2">No auction has been created yet.</p>
-            <p className="text-purple-400 text-sm">
-              Connect your wallet and create an auction to get started.
-            </p>
-          </div>
-        )}
-      </div>
+        </GlassCardContent>
+      </GlassCard>
     </motion.div>
   );
 }

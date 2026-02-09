@@ -5,7 +5,7 @@ import { sepolia, mainnet } from "@starknet-react/chains";
 import {
   StarknetConfig,
   publicProvider,
-  ready,
+  argent,
   braavos,
   useInjectedConnectors,
   voyager,
@@ -13,9 +13,9 @@ import {
 
 export function StarknetProvider({ children }: { children: React.ReactNode }) {
   const { connectors } = useInjectedConnectors({
-    recommended: [ready(), braavos()],
-    includeRecommended: "onlyIfNoConnectors",
-    order: "random",
+    recommended: [argent(), braavos()],
+    includeRecommended: "always",
+    order: "alphabetical",
   });
 
   return (
