@@ -17,27 +17,42 @@ import { GlowButton } from "@/components/ui/glow-button";
 import { GlowInput } from "@/components/ui/glow-input";
 import { StatusBadge } from "@/components/ui/status-badge";
 
-// Local storage key for saving bid data
+// Local storage keys for saving bid data
 const BID_STORAGE_KEY = "veilbid_pending_bid";
+const CONTRACT_ADDRESS_KEY = "veilbid_contract_address";
 
 interface PendingBid {
   bidAmount: string;
   nonce: string;
   commitment: string;
+  contractAddress: string; // Track which contract this bid is for
 }
 
 function savePendingBid(bid: PendingBid) {
   if (typeof window !== "undefined") {
     localStorage.setItem(BID_STORAGE_KEY, JSON.stringify(bid));
+    localStorage.setItem(CONTRACT_ADDRESS_KEY, bid.contractAddress);
   }
 }
 
-function loadPendingBid(): PendingBid | null {
+function loadPendingBid(currentContractAddress: string): PendingBid | null {
   if (typeof window !== "undefined") {
     const data = localStorage.getItem(BID_STORAGE_KEY);
+    const savedAddress = localStorage.getItem(CONTRACT_ADDRESS_KEY);
+    
+    // Clear bid data if contract address has changed
+    if (savedAddress && savedAddress !== currentContractAddress) {
+      clearPendingBid();
+      return null;
+    }
+    
     if (data) {
       try {
-        return JSON.parse(data);
+        const bid = JSON.parse(data);
+        // Verify contract address matches
+        if (bid.contractAddress === currentContractAddress) {
+          return bid;
+        }
       } catch {
         return null;
       }
@@ -49,12 +64,13 @@ function loadPendingBid(): PendingBid | null {
 function clearPendingBid() {
   if (typeof window !== "undefined") {
     localStorage.removeItem(BID_STORAGE_KEY);
+    localStorage.removeItem(CONTRACT_ADDRESS_KEY);
   }
 }
 
 export function BidForm() {
   const { address, isConnected } = useAccount();
-  const { contract } = useAuctionContract();
+  const { contract, address: contractAddress } = useAuctionContract();
   const { phase, hasAuction } = useAuctionState();
   const { hasCommitted } = useUserCommitment(address);
   const { sendAsync, isPending } = useSendTransaction({});
@@ -64,17 +80,23 @@ export function BidForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Load pending bid from localStorage on mount
+  // Load pending bid from localStorage on mount and when contract changes
   useEffect(() => {
-    const saved = loadPendingBid();
-    if (saved) {
-      setPendingBid(saved);
-      setBidAmount(saved.bidAmount);
+    if (contractAddress) {
+      const saved = loadPendingBid(contractAddress);
+      if (saved) {
+        setPendingBid(saved);
+        setBidAmount(saved.bidAmount);
+      } else {
+        // Clear state if no valid bid for this contract
+        setPendingBid(null);
+        setBidAmount("");
+      }
     }
-  }, []);
+  }, [contractAddress]);
 
   const handleCommit = async () => {
-    if (!contract || !isConnected || !bidAmount) return;
+    if (!contract || !isConnected || !bidAmount || !contractAddress) return;
     setError(null);
     setSuccess(null);
 
@@ -88,11 +110,12 @@ export function BidForm() {
       const nonce = generateNonce();
       const commitment = computeBidCommitment(amount, nonce);
 
-      // Save bid data locally for reveal phase
+      // Save bid data locally for reveal phase with contract address
       const bid: PendingBid = {
         bidAmount: amount.toString(),
         nonce: nonce.toString(),
         commitment,
+        contractAddress, // Store which contract this bid is for
       };
       savePendingBid(bid);
       setPendingBid(bid);
@@ -213,16 +236,56 @@ export function BidForm() {
               className="space-y-4"
             >
               {hasCommitted ? (
-                <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-                  <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <div className="text-sm font-medium text-emerald-400">
-                      Bid Committed
-                    </div>
-                    <div className="text-xs text-emerald-400/70 mt-1">
-                      Wait for the reveal phase to reveal your bid.
+                <div className="space-y-4">
+                  {/* Success Message */}
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                    <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-emerald-400 mb-1">
+                        Bid Committed Successfully! ✓
+                      </div>
+                      <div className="text-xs text-emerald-400/70">
+                        Your sealed bid has been submitted to the blockchain.
+                      </div>
                     </div>
                   </div>
+
+                  {/* Info Box */}
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                    <Lock className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-blue-400 mb-2">
+                        What happens next?
+                      </div>
+                      <ul className="text-xs text-blue-400/80 space-y-1.5">
+                        <li className="flex items-start gap-2">
+                          <span className="text-blue-400 mt-0.5">•</span>
+                          <span>Your bid amount is cryptographically hidden</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-blue-400 mt-0.5">•</span>
+                          <span>Wait for the commit phase to end</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-blue-400 mt-0.5">•</span>
+                          <span>Return during reveal phase to reveal your bid</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="text-blue-400 mt-0.5">•</span>
+                          <span className="font-medium">You cannot change or submit another bid</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Disabled Button */}
+                  <GlowButton
+                    disabled
+                    className="w-full opacity-60 cursor-not-allowed"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Bid Already Committed
+                  </GlowButton>
                 </div>
               ) : (
                 <>
