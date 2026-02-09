@@ -1,11 +1,28 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
 export default function Home() {
   return (
     <main className="relative z-10 flex flex-col items-center justify-center py-32 px-4 sm:px-16">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="mb-8"
+        >
+          <Image
+            src="/veilbid.png"
+            alt="VeilBid Logo"
+            width={120}
+            height={120}
+            className="rounded-2xl shadow-2xl shadow-purple-500/30"
+            priority
+          />
+        </motion.div>
         <motion.h1
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
@@ -27,9 +44,11 @@ export default function Home() {
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
         >
-          <Button size="lg" variant="secondary" className="bg-gradient-to-r from-purple-600 to-purple-900 text-white shadow-lg">
-            Learn More
-          </Button>
+          <Link href="/auctions">
+            <Button size="lg" variant="secondary" className="bg-gradient-to-r from-purple-600 to-purple-900 text-white shadow-lg hover:from-purple-500 hover:to-purple-800">
+              Enter Auction
+            </Button>
+          </Link>
         </motion.div>
     </main>
   );

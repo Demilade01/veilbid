@@ -17,6 +17,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "VeilBid",
   description: "VeilBid – Privacy-Preserving Bitcoin Auctions on Starknet. Sealed-bid auctions with hidden bids, powered by Cairo and Starknet.",
+  icons: {
+    icon: "/veilbid.png",
+    apple: "/veilbid.png",
+  },
 };
 
 export default function RootLayout({

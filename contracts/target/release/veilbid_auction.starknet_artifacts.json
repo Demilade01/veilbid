@@ -1,0 +1,1 @@
+{"version":1,"contracts":[{"id":"qi4cdkt7bfs8g","package_name":"veilbid_auction","contract_name":"VeilBidAuction","module_path":"veilbid_auction::VeilBidAuction","artifacts":{"sierra":"veilbid_auction_VeilBidAuction.contract_class.json","casm":"veilbid_auction_VeilBidAuction.compiled_contract_class.json"}}]}
