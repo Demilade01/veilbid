@@ -112,10 +112,11 @@ const phaseIcons: Record<string, LucideIcon> = {
 };
 
 export interface StatusBadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof statusBadgeVariants> {
+  extends VariantProps<typeof statusBadgeVariants> {
   icon?: LucideIcon | boolean;
   pulse?: boolean;
+  children?: React.ReactNode;
+  className?: string;
 }
 
 const StatusBadge = React.forwardRef<HTMLDivElement, StatusBadgeProps>(
@@ -128,7 +129,6 @@ const StatusBadge = React.forwardRef<HTMLDivElement, StatusBadgeProps>(
       icon,
       pulse = false,
       children,
-      ...props
     },
     ref
   ) => {
@@ -149,7 +149,6 @@ const StatusBadge = React.forwardRef<HTMLDivElement, StatusBadgeProps>(
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.2 }}
-        {...props}
       >
         {IconComponent && (
           <IconComponent
