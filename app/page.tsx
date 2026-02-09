@@ -23,6 +23,7 @@ import {
   GlassCardContent,
 } from "@/components/ui/glass-card";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { WalletButton } from "@/components/layout/wallet-button";
 
 // Animation variants
 const fadeInUp = {
@@ -142,7 +143,10 @@ export default function Home() {
           >
             Private Bitcoin Auctions
             <br />
-            <span className="text-transparent bg-clip-text bg-veil-gradient-purple text-glow-strong">
+            <span 
+              className="text-transparent bg-clip-text text-glow-strong"
+              style={{ backgroundImage: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 50%, #6D28D9 100%)' }}
+            >
               on Starknet
             </span>
           </motion.h1>
@@ -172,10 +176,9 @@ export default function Home() {
                 <ArrowRight className="w-5 h-5" />
               </GlowButton>
             </Link>
-            <GlowButton variant="secondary" size="xl">
-              <Bitcoin className="w-5 h-5" />
-              Connect Wallet
-            </GlowButton>
+            <div className="scale-[1.4]">
+              <WalletButton />
+            </div>
           </motion.div>
 
           {/* Stats */}
@@ -330,7 +333,10 @@ export default function Home() {
               <h2 className="text-3xl sm:text-4xl font-bold text-veil-text mb-6">
                 Your Bids Are
                 <br />
-                <span className="text-transparent bg-clip-text bg-veil-gradient-purple">
+                <span 
+                  className="text-transparent bg-clip-text"
+                  style={{ backgroundImage: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 50%, #6D28D9 100%)' }}
+                >
                   Cryptographically Hidden
                 </span>
               </h2>

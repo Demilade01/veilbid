@@ -2,7 +2,7 @@
 
 import { useConnect, useAccount, useDisconnect, useNetwork } from "@starknet-react/core";
 import { ChevronDownIcon, LogOutIcon, Wallet, Copy, Check, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GlowButton } from "@/components/ui/glow-button";
 import {
   DropdownMenu,
@@ -24,8 +24,16 @@ export function WalletButton() {
   const { connectors, connect, isPending: isConnectPending } = useConnect();
   const { disconnect } = useDisconnect();
   const [copied, setCopied] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const pending = isConnecting || isConnectPending;
+
+  // Close dropdown when connection is successful
+  useEffect(() => {
+    if (isConnected) {
+      setIsOpen(false);
+    }
+  }, [isConnected]);
 
   const copyAddress = async () => {
     if (address) {
@@ -107,7 +115,7 @@ export function WalletButton() {
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <GlowButton
           variant="default"
@@ -126,16 +134,30 @@ export function WalletButton() {
           Select a wallet
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-veil-border my-1" />
-        {connectors.map((c) => (
-          <DropdownMenuItem
-            key={c.id}
-            className="text-veil-text-muted hover:text-veil-text hover:bg-veil-purple/10 rounded-lg cursor-pointer px-3 py-2.5"
-            onSelect={() => connect({ connector: c })}
-          >
-            <Wallet className="w-4 h-4" />
-            <span>{c.name ?? c.id}</span>
-          </DropdownMenuItem>
-        ))}
+        {connectors.length > 0 ? (
+          connectors.map((c) => (
+            <DropdownMenuItem
+              key={c.id}
+              className="text-veil-text-muted hover:text-veil-text hover:bg-veil-purple/10 rounded-lg cursor-pointer px-3 py-2.5"
+              onSelect={async (e) => {
+                e.preventDefault();
+                try {
+                  await connect({ connector: c });
+                } catch (error) {
+                  console.error("Connection error:", error);
+                  setIsOpen(false);
+                }
+              }}
+            >
+              <Wallet className="w-4 h-4" />
+              <span>{c.name ?? c.id}</span>
+            </DropdownMenuItem>
+          ))
+        ) : (
+          <div className="px-3 py-4 text-center text-sm text-veil-text-muted">
+            No wallets detected. Please install Argent X or Braavos.
+          </div>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

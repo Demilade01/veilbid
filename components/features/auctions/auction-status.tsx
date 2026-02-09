@@ -18,8 +18,17 @@ function formatTimestamp(timestamp: number): string {
 }
 
 function truncateAddress(address: string | undefined): string {
-  if (!address || address === "0x0") return "None";
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  if (!address) return "None";
+  
+  // Convert to string if it's not already
+  const addressStr = typeof address === 'string' ? address : String(address);
+  
+  // Check for zero address
+  if (addressStr === "0x0" || addressStr === "0x00" || !addressStr.startsWith("0x")) {
+    return "None";
+  }
+  
+  return `${addressStr.slice(0, 6)}...${addressStr.slice(-4)}`;
 }
 
 const phaseConfig = {

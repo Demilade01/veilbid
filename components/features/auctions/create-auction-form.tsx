@@ -29,6 +29,12 @@ export function CreateAuctionForm() {
     if (!contract || !isConnected) return;
     setError(null);
 
+    // Check if auction already exists
+    if (hasAuction) {
+      setError("An auction already exists. Please wait for it to complete.");
+      return;
+    }
+
     try {
       const now = Math.floor(Date.now() / 1000);
       const commitEnd = now + Number(commitMinutes) * 60;
@@ -38,7 +44,18 @@ export function CreateAuctionForm() {
       await sendAsync([call]);
     } catch (err) {
       console.error("Create auction error:", err);
-      setError(err instanceof Error ? err.message : "Failed to create auction");
+      
+      // Parse the error message
+      let errorMessage = "Failed to create auction";
+      if (err instanceof Error) {
+        if (err.message.includes("Auction already exists")) {
+          errorMessage = "An auction already exists. Please wait for the current auction to settle before creating a new one.";
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
     }
   };
 
@@ -68,7 +85,19 @@ export function CreateAuctionForm() {
   }
 
   if (hasAuction) {
-    return null;
+    return (
+      <GlassCard variant="elevated">
+        <GlassCardContent className="flex flex-col items-center justify-center py-8 text-center">
+          <div className="w-12 h-12 rounded-xl bg-veil-purple/10 flex items-center justify-center mb-3">
+            <AlertCircle className="w-6 h-6 text-veil-purple-light" />
+          </div>
+          <p className="text-veil-text font-medium mb-1">Auction Active</p>
+          <p className="text-veil-text-muted text-sm">
+            An auction already exists. Wait for it to settle before creating a new one.
+          </p>
+        </GlassCardContent>
+      </GlassCard>
+    );
   }
 
   return (
