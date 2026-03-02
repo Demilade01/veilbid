@@ -3,15 +3,18 @@
  * Uses starknet.js Poseidon hash to match Cairo contract
  */
 
-import { hash } from "starknet";
+import { hash, num } from "starknet";
 
 /**
  * Compute Poseidon hash of (bid_amount, nonce) for commit-reveal scheme.
  * Must match the Cairo contract's poseidon_hash_bid_nonce function.
  */
 export function computeBidCommitment(bidAmount: bigint, nonce: bigint): string {
-  // Poseidon hash of [bid_amount, nonce]
-  return hash.computePoseidonHash(bidAmount.toString(), nonce.toString());
+  // Use poseidonHashMany to match Cairo's sequential .update().update().finalize()
+  return hash.computePoseidonHashOnElements([
+    num.toHex(bidAmount),
+    num.toHex(nonce),
+  ]);
 }
 
 /**

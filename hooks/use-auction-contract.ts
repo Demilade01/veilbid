@@ -1,7 +1,7 @@
 "use client";
 
 import { useContract, useReadContract } from "@starknet-react/core";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { VEILBID_AUCTION_ABI } from "@/lib/contracts";
 import { getAuctionContractAddress, type HexString } from "@/lib/constants";
 
@@ -10,7 +10,7 @@ import { getAuctionContractAddress, type HexString } from "@/lib/constants";
  */
 export function useAuctionContract() {
   const address = getAuctionContractAddress();
-  
+
   const { contract } = useContract({
     abi: VEILBID_AUCTION_ABI,
     address,
@@ -107,37 +107,44 @@ export function useAuctionState() {
     });
   }
 
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Math.floor(Date.now() / 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Determine current phase based on timestamps
   const phase = useMemo(() => {
     if (!commitEnd || !revealEnd) return "loading";
-    
+
     const commitEndNum = Number(commitEnd);
     const revealEndNum = Number(revealEnd);
-    
+
     // No auction created yet (contract returns 0 for uninitialized values)
     if (commitEndNum === 0 && revealEndNum === 0) return "none";
-    
-    const now = Math.floor(Date.now() / 1000);
-    
+
     // Check phases in order
     if (now < commitEndNum) return "commit";
     if (now < revealEndNum) return "reveal";
-    
+
     // If auction has been settled, show settled status
     // Note: With the updated contract, settle() will reset timestamps to 0
     // But for backward compatibility with old contract deployments, we handle both
     if (settled) return "settled";
-    
+
     // Auction ended but not yet settled
     return "ended";
-  }, [commitEnd, revealEnd, settled]);
+  }, [commitEnd, revealEnd, settled, now]);
 
   return {
     commitEnd: commitEnd ? Number(commitEnd) : 0,
     revealEnd: revealEnd ? Number(revealEnd) : 0,
-    creator: creator as string | undefined,
+    creator: creator ? `0x${BigInt(creator.toString()).toString(16)}` : undefined,
     highestBid: highestBid ? BigInt(highestBid.toString()) : BigInt(0),
-    winner: winner as string | undefined,
+    winner: winner ? `0x${BigInt(winner.toString()).toString(16)}` : undefined,
     settled: Boolean(settled),
     phase,
     isLoading,
@@ -153,16 +160,26 @@ export function useAuctionState() {
 export function useUserCommitment(userAddress: HexString | undefined) {
   const address: HexString | undefined = getAuctionContractAddress();
 
+  const args = useMemo(() => userAddress ? [userAddress] as const : undefined, [userAddress]);
+
   const { data: commitment, isLoading } = useReadContract({
     abi: VEILBID_AUCTION_ABI,
     address,
     functionName: "get_commitment",
-    args: userAddress ? [userAddress] : undefined,
+    args,
     watch: true,
     enabled: Boolean(userAddress),
   });
 
-  const hasCommitted = commitment && commitment !== BigInt(0);
+  let hasCommitted = false;
+  try {
+    if (commitment) {
+      const commitmentValue = BigInt(commitment.toString());
+      hasCommitted = commitmentValue !== BigInt(0);
+    }
+  } catch (err) {
+    console.error("Error parsing commitment:", err);
+  }
 
   return {
     commitment: commitment?.toString(),

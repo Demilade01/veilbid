@@ -25,53 +25,54 @@ interface PendingBid {
   bidAmount: string;
   nonce: string;
   commitment: string;
-  contractAddress: string; // Track which contract this bid is for
+  contractAddress: string;
+  userAddress: string;
+  auctionCommitEnd: number;
 }
 
-function savePendingBid(bid: PendingBid) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(BID_STORAGE_KEY, JSON.stringify(bid));
-    localStorage.setItem(CONTRACT_ADDRESS_KEY, bid.contractAddress);
+async function savePendingBid(bid: PendingBid) {
+  try {
+    await fetch("/api/bids", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(bid),
+    });
+  } catch (error) {
+    console.error("Failed to save pending bid to DB:", error);
   }
 }
 
-function loadPendingBid(currentContractAddress: string): PendingBid | null {
-  if (typeof window !== "undefined") {
-    const data = localStorage.getItem(BID_STORAGE_KEY);
-    const savedAddress = localStorage.getItem(CONTRACT_ADDRESS_KEY);
-    
-    // Clear bid data if contract address has changed
-    if (savedAddress && savedAddress !== currentContractAddress) {
-      clearPendingBid();
-      return null;
-    }
-    
-    if (data) {
-      try {
-        const bid = JSON.parse(data);
-        // Verify contract address matches
-        if (bid.contractAddress === currentContractAddress) {
-          return bid;
-        }
-      } catch {
-        return null;
+async function loadPendingBid(currentContractAddress: string, currentUserAddress: string, auctionCommitEnd: number): Promise<PendingBid | null> {
+  try {
+    const res = await fetch(`/api/bids?user=${currentUserAddress}&contract=${currentContractAddress}&auctionCommitEnd=${auctionCommitEnd}`);
+    if (res.ok) {
+      const bid = await res.json();
+      if (bid && bid.id) {
+        return bid as PendingBid;
       }
     }
+  } catch (error) {
+    console.error("Failed to load pending bid from DB:", error);
   }
   return null;
 }
 
-function clearPendingBid() {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(BID_STORAGE_KEY);
-    localStorage.removeItem(CONTRACT_ADDRESS_KEY);
+async function clearPendingBid(currentContractAddress: string, currentUserAddress: string, auctionCommitEnd: number) {
+  try {
+    await fetch(`/api/bids?user=${currentUserAddress}&contract=${currentContractAddress}&auctionCommitEnd=${auctionCommitEnd}`, {
+      method: "DELETE",
+    });
+  } catch (error) {
+    console.error("Failed to clear pending bid from DB:", error);
   }
 }
 
 export function BidForm() {
   const { address, isConnected } = useAccount();
   const { contract, address: contractAddress } = useAuctionContract();
-  const { phase, hasAuction } = useAuctionState();
+  const { phase, hasAuction, commitEnd } = useAuctionState();
   const { hasCommitted } = useUserCommitment(address);
   const { sendAsync, isPending } = useSendTransaction({});
 
@@ -80,23 +81,27 @@ export function BidForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Load pending bid from localStorage on mount and when contract changes
+  // Load pending bid from DB on mount and when contract/auction/address changes
   useEffect(() => {
-    if (contractAddress) {
-      const saved = loadPendingBid(contractAddress);
-      if (saved) {
-        setPendingBid(saved);
-        setBidAmount(saved.bidAmount);
-      } else {
-        // Clear state if no valid bid for this contract
-        setPendingBid(null);
-        setBidAmount("");
+    // Immediately clear state to prevent flashing previous user's bid data
+    setPendingBid(null);
+    setBidAmount("");
+
+    async function fetchBid() {
+      if (contractAddress && address && commitEnd > 0) {
+        const saved = await loadPendingBid(contractAddress, address, commitEnd);
+        if (saved) {
+          setPendingBid(saved);
+          setBidAmount(saved.bidAmount);
+        }
       }
     }
-  }, [contractAddress]);
+
+    fetchBid();
+  }, [contractAddress, address, commitEnd]);
 
   const handleCommit = async () => {
-    if (!contract || !isConnected || !bidAmount || !contractAddress) return;
+    if (!contract || !isConnected || !bidAmount || !contractAddress || !address) return;
     setError(null);
     setSuccess(null);
 
@@ -110,14 +115,16 @@ export function BidForm() {
       const nonce = generateNonce();
       const commitment = computeBidCommitment(amount, nonce);
 
-      // Save bid data locally for reveal phase with contract address
+      // Save bid data locally for reveal phase with contract address and auction identifier
       const bid: PendingBid = {
         bidAmount: amount.toString(),
         nonce: nonce.toString(),
         commitment,
-        contractAddress, // Store which contract this bid is for
+        contractAddress,
+        userAddress: address,
+        auctionCommitEnd: commitEnd,
       };
-      savePendingBid(bid);
+      await savePendingBid(bid);
       setPendingBid(bid);
 
       const call = contract.populate("commit_bid", [commitment]);
@@ -140,10 +147,10 @@ export function BidForm() {
         pendingBid.nonce,
       ]);
       await sendAsync([call]);
-      clearPendingBid();
-      setPendingBid(null);
-      setBidAmount("");
-      setSuccess("Bid revealed successfully!");
+      // We no longer clear the bid from DB here.
+      // It stays as local receipt so the user sees "Bid revealed successfully"
+      // instead of "Reveal Data Not Found" when the on-chain commitment clears.
+      setSuccess("Reveal transaction submitted!");
     } catch (err) {
       console.error("Reveal bid error:", err);
       setError(err instanceof Error ? err.message : "Failed to reveal bid");
@@ -189,6 +196,14 @@ export function BidForm() {
   const isCommitPhase = phase === "commit";
   const isRevealPhase = phase === "reveal";
 
+  // Only consider user as having committed if:
+  // 1. They have an on-chain commitment (hasCommitted)
+  // 2. They have pending bid data for THIS specific auction
+  const hasCommittedForThisAuction = hasCommitted && pendingBid !== null && pendingBid.auctionCommitEnd === commitEnd;
+
+  // They no longer have an on-chain commitment but we have their local data for THIS auction
+  const alreadyRevealed = !hasCommitted && pendingBid !== null && pendingBid.auctionCommitEnd === commitEnd;
+
   return (
     <GlassCard variant="elevated" className="h-full">
       <GlassCardHeader>
@@ -205,8 +220,8 @@ export function BidForm() {
               {isCommitPhase
                 ? "Place Sealed Bid"
                 : isRevealPhase
-                ? "Reveal Your Bid"
-                : "Auction Ended"}
+                  ? "Reveal Your Bid"
+                  : "Auction Ended"}
             </GlassCardTitle>
           </div>
           {isCommitPhase && (
@@ -219,8 +234,8 @@ export function BidForm() {
           {isCommitPhase
             ? "Your bid stays hidden until reveal phase"
             : isRevealPhase
-            ? "Reveal your bid for verification"
-            : "Check the results above"}
+              ? "Reveal your bid for verification"
+              : "Check the results above"}
         </GlassCardDescription>
       </GlassCardHeader>
 
@@ -235,11 +250,11 @@ export function BidForm() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-4"
             >
-              {hasCommitted ? (
+              {hasCommittedForThisAuction ? (
                 <div className="space-y-4">
                   {/* Success Message */}
                   <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-                    <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <div className="text-sm font-medium text-emerald-400 mb-1">
                         Bid Committed Successfully! ✓
@@ -252,7 +267,7 @@ export function BidForm() {
 
                   {/* Info Box */}
                   <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
-                    <Lock className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                    <Lock className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <div className="text-sm font-medium text-blue-400 mb-2">
                         What happens next?
@@ -303,7 +318,7 @@ export function BidForm() {
                   />
 
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-veil-surface/50 border border-veil-border/50">
-                    <Shield className="w-4 h-4 text-veil-purple-light flex-shrink-0 mt-0.5" />
+                    <Shield className="w-4 h-4 text-veil-purple-light shrink-0 mt-0.5" />
                     <p className="text-xs text-veil-text-dim">
                       Your bid is cryptographically hidden. Only you know the
                       amount until the reveal phase.
@@ -333,7 +348,38 @@ export function BidForm() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-4"
             >
-              {pendingBid ? (
+              {alreadyRevealed ? (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl bg-veil-surface border border-veil-border">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm text-veil-text-muted">
+                        Revealed Bid
+                      </span>
+                      <StatusBadge variant="ended" size="sm">
+                        Revealed
+                      </StatusBadge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Bitcoin className="w-5 h-5 text-[#F7931A]" />
+                      <span className="text-2xl font-bold font-mono text-veil-text">
+                        {pendingBid.bidAmount}
+                      </span>
+                      <span className="text-veil-text-muted">sats</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                    <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-sm font-medium text-emerald-400">
+                        Bid Revealed Successfully!
+                      </div>
+                      <div className="text-xs text-emerald-400/70 mt-1">
+                        Your bid has been successfully revealed on-chain. Wait for the auction to end.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : hasCommittedForThisAuction ? (
                 <>
                   <div className="p-4 rounded-xl bg-veil-surface border border-veil-border">
                     <div className="flex items-center justify-between mb-3">
@@ -356,16 +402,17 @@ export function BidForm() {
                   <GlowButton
                     onClick={handleReveal}
                     loading={isPending}
+                    disabled={!!success}
                     variant="glow"
                     className="w-full"
                   >
                     <Eye className="w-4 h-4" />
-                    Reveal Bid
+                    {success ? "Transaction Submitted" : "Reveal Bid"}
                   </GlowButton>
                 </>
               ) : hasCommitted ? (
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                  <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                   <div>
                     <div className="text-sm font-medium text-amber-400">
                       Reveal Data Not Found
@@ -417,7 +464,7 @@ export function BidForm() {
               exit={{ opacity: 0, height: 0 }}
               className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30"
             >
-              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
               <p className="text-sm text-red-400">{error}</p>
             </motion.div>
           )}
@@ -428,7 +475,7 @@ export function BidForm() {
               exit={{ opacity: 0, height: 0 }}
               className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30"
             >
-              <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+              <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <p className="text-sm text-emerald-400">{success}</p>
             </motion.div>
           )}
