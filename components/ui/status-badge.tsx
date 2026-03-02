@@ -24,7 +24,7 @@ const statusBadgeVariants = cva(
         default:
           "bg-veil-surface border border-veil-border text-veil-text-muted",
         commit:
-          "bg-blue-500/10 border border-blue-500/30 text-blue-400",
+          "bg-indigo-500/10 border border-indigo-500/30 text-indigo-400",
         reveal:
           "bg-veil-purple/10 border border-veil-purple/30 text-veil-purple-light",
         settled:
@@ -56,7 +56,7 @@ const statusBadgeVariants = cva(
       {
         variant: "commit",
         glow: true,
-        className: "shadow-[0_0_15px_rgba(59,130,246,0.3)]",
+        className: "shadow-[0_0_15px_rgba(99,102,241,0.3)]",
       },
       {
         variant: "reveal",
@@ -163,7 +163,7 @@ const StatusBadge = React.forwardRef<HTMLDivElement, StatusBadgeProps>(
             <span
               className={cn(
                 "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
-                variant === "commit" && "bg-blue-400",
+                variant === "commit" && "bg-indigo-400",
                 variant === "reveal" && "bg-veil-purple-light",
                 variant === "settled" && "bg-emerald-400",
                 variant === "ended" && "bg-amber-400",
@@ -176,7 +176,7 @@ const StatusBadge = React.forwardRef<HTMLDivElement, StatusBadgeProps>(
             <span
               className={cn(
                 "relative inline-flex rounded-full h-2 w-2",
-                variant === "commit" && "bg-blue-400",
+                variant === "commit" && "bg-indigo-400",
                 variant === "reveal" && "bg-veil-purple-light",
                 variant === "settled" && "bg-emerald-400",
                 variant === "ended" && "bg-amber-400",

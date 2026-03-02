@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Eye, CheckCircle, AlertCircle, Bitcoin, Shield, Wallet } from "lucide-react";
-import { useAccount, useSendTransaction } from "@starknet-react/core";
+import { toast } from "sonner";
+import { useAccount, useSendTransaction, useTransactionReceipt } from "@starknet-react/core";
 import { useAuctionContract, useAuctionState, useUserCommitment } from "@/hooks/use-auction-contract";
 import { computeBidCommitment, generateNonce } from "@/lib/crypto";
 import {
@@ -74,7 +75,15 @@ export function BidForm() {
   const { contract, address: contractAddress } = useAuctionContract();
   const { phase, hasAuction, commitEnd } = useAuctionState();
   const { hasCommitted } = useUserCommitment(address);
-  const { sendAsync, isPending } = useSendTransaction({});
+  const { sendAsync, data: txData, isPending: isSigning } = useSendTransaction({});
+  const { isLoading: isConfirming } = useTransactionReceipt({
+    hash: txData?.transaction_hash,
+    watch: true,
+  });
+
+  const isPending = isSigning || isConfirming;
+  const isCommitPhase = phase === "commit";
+  const isRevealPhase = phase === "reveal";
 
   const [bidAmount, setBidAmount] = useState("");
   const [pendingBid, setPendingBid] = useState<PendingBid | null>(null);
@@ -99,6 +108,23 @@ export function BidForm() {
 
     fetchBid();
   }, [contractAddress, address, commitEnd]);
+
+  // Handle transaction confirmation
+  useEffect(() => {
+    if (txData?.transaction_hash && !isConfirming) {
+      if (isCommitPhase) {
+        setSuccess("Bid committed! Save your bid details for the reveal phase.");
+        toast.success("Bid Committed!", {
+          description: "Your sealed bid has been submitted to the blockchain.",
+        });
+      } else if (isRevealPhase) {
+        setSuccess("Reveal transaction submitted!");
+        toast.success("Bid Revealed!", {
+          description: "Your bid has been successfully revealed on-chain.",
+        });
+      }
+    }
+  }, [txData, isConfirming, isCommitPhase, isRevealPhase]);
 
   const handleCommit = async () => {
     if (!contract || !isConnected || !bidAmount || !contractAddress || !address) return;
@@ -129,7 +155,9 @@ export function BidForm() {
 
       const call = contract.populate("commit_bid", [commitment]);
       await sendAsync([call]);
-      setSuccess("Bid committed! Save your bid details for the reveal phase.");
+      toast.info("Transaction submitted", {
+        description: "Waiting for blockchain confirmation...",
+      });
     } catch (err) {
       console.error("Commit bid error:", err);
       setError(err instanceof Error ? err.message : "Failed to commit bid");
@@ -147,10 +175,9 @@ export function BidForm() {
         pendingBid.nonce,
       ]);
       await sendAsync([call]);
-      // We no longer clear the bid from DB here.
-      // It stays as local receipt so the user sees "Bid revealed successfully"
-      // instead of "Reveal Data Not Found" when the on-chain commitment clears.
-      setSuccess("Reveal transaction submitted!");
+      toast.info("Transaction submitted", {
+        description: "Waiting for blockchain confirmation...",
+      });
     } catch (err) {
       console.error("Reveal bid error:", err);
       setError(err instanceof Error ? err.message : "Failed to reveal bid");
@@ -193,8 +220,6 @@ export function BidForm() {
     );
   }
 
-  const isCommitPhase = phase === "commit";
-  const isRevealPhase = phase === "reveal";
 
   // Only consider user as having committed if:
   // 1. They have an on-chain commitment (hasCommitted)
@@ -210,7 +235,7 @@ export function BidForm() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {isCommitPhase ? (
-              <Lock className="w-5 h-5 text-blue-400" />
+              <Lock className="w-5 h-5 text-indigo-400" />
             ) : isRevealPhase ? (
               <Eye className="w-5 h-5 text-veil-purple-light" />
             ) : (
@@ -266,27 +291,27 @@ export function BidForm() {
                   </div>
 
                   {/* Info Box */}
-                  <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
-                    <Lock className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/30">
+                    <Lock className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <div className="text-sm font-medium text-blue-400 mb-2">
+                      <div className="text-sm font-medium text-indigo-400 mb-2">
                         What happens next?
                       </div>
-                      <ul className="text-xs text-blue-400/80 space-y-1.5">
+                      <ul className="text-xs text-indigo-400/80 space-y-1.5">
                         <li className="flex items-start gap-2">
-                          <span className="text-blue-400 mt-0.5">•</span>
+                          <span className="text-indigo-400 mt-0.5">•</span>
                           <span>Your bid amount is cryptographically hidden</span>
                         </li>
                         <li className="flex items-start gap-2">
-                          <span className="text-blue-400 mt-0.5">•</span>
+                          <span className="text-indigo-400 mt-0.5">•</span>
                           <span>Wait for the commit phase to end</span>
                         </li>
                         <li className="flex items-start gap-2">
-                          <span className="text-blue-400 mt-0.5">•</span>
+                          <span className="text-indigo-400 mt-0.5">•</span>
                           <span>Return during reveal phase to reveal your bid</span>
                         </li>
                         <li className="flex items-start gap-2">
-                          <span className="text-blue-400 mt-0.5">•</span>
+                          <span className="text-indigo-400 mt-0.5">•</span>
                           <span className="font-medium">You cannot change or submit another bid</span>
                         </li>
                       </ul>

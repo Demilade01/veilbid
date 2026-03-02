@@ -121,7 +121,8 @@ veilbid/
 │   │   └── auctions/             # Auction-related components
 │   │       ├── auction-status.tsx
 │   │       ├── bid-form.tsx
-│   │       └── create-auction-form.tsx
+│   │       ├── create-auction-form.tsx
+│   │       └── settle-button.tsx
 │   ├── layout/                   # Layout components
 │   │   ├── header.tsx
 │   │   └── wallet-button.tsx
@@ -140,7 +141,9 @@ veilbid/
 ├── lib/                          # Utilities and configs
 │   ├── contracts/                # Contract ABIs
 │   ├── crypto.ts                 # Cryptographic utilities
-│   └── constants.ts              # App constants
+│   ├── constants.ts              # App constants
+│   ├── types.ts                  # Type definitions
+│   └── utils.ts                  # Utility functions
 └── public/                       # Static assets
 ```
 
