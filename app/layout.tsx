@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { StarknetProvider } from "@/components/providers/starknet-provider";
 import { Header } from "@/components/layout/header";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -42,7 +43,7 @@ export default function RootLayout({
               <div className="absolute inset-0 animated-gradient-bg" />
               <div className="absolute inset-0 bg-veil-gradient-radial" />
               {/* Subtle grid pattern */}
-              <div 
+              <div
                 className="absolute inset-0 opacity-[0.02]"
                 style={{
                   backgroundImage: `linear-gradient(rgba(139, 92, 246, 0.5) 1px, transparent 1px),
@@ -51,11 +52,12 @@ export default function RootLayout({
                 }}
               />
             </div>
-            
+
             {/* Main content */}
             <div className="relative z-10">
               <Header />
               {children}
+              <Toaster position="top-right" />
             </div>
           </div>
         </StarknetProvider>

@@ -19,15 +19,15 @@ function formatTimestamp(timestamp: number): string {
 
 function truncateAddress(address: string | undefined): string {
   if (!address) return "None";
-  
+
   // Convert to string if it's not already
   const addressStr = typeof address === 'string' ? address : String(address);
-  
+
   // Check for zero address
   if (addressStr === "0x0" || addressStr === "0x00" || !addressStr.startsWith("0x")) {
     return "None";
   }
-  
+
   return `${addressStr.slice(0, 6)}...${addressStr.slice(-4)}`;
 }
 
@@ -122,7 +122,7 @@ export function AuctionStatus() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl bg-veil-surface border border-veil-border">
                   <div className="flex items-center gap-2 text-veil-text-muted text-sm mb-3">
-                    <Lock className="w-4 h-4 text-blue-400" />
+                    <Lock className="w-4 h-4 text-indigo-400" />
                     Commit Phase {phase === "commit" ? "Ends In" : "Ended"}
                   </div>
                   {phase === "commit" ? (
@@ -175,7 +175,11 @@ export function AuctionStatus() {
                     <span>Highest Bid</span>
                   </div>
                   <span className="text-veil-text font-mono text-sm">
-                    {highestBid > 0 ? (
+                    {phase === "commit" || phase === "reveal" ? (
+                      <span className="text-veil-purple-light flex items-center gap-1.5 italic">
+                        <Lock className="w-3 h-3" /> Hidden until reveal ends
+                      </span>
+                    ) : highestBid > 0 ? (
                       <span className="text-emerald-400">{highestBid.toString()} sats</span>
                     ) : (
                       <span className="text-veil-text-dim">No bids revealed</span>
@@ -189,7 +193,9 @@ export function AuctionStatus() {
                     <span>Winner</span>
                   </div>
                   <span className="text-veil-text font-mono text-sm">
-                    {winner && winner !== "0x0" ? (
+                    {phase === "commit" || phase === "reveal" ? (
+                      <span className="text-veil-text-dim">TBD</span>
+                    ) : winner && winner !== "0x0" ? (
                       <span className="text-emerald-400">{truncateAddress(winner)}</span>
                     ) : (
                       <span className="text-veil-text-dim">TBD</span>

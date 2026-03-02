@@ -244,8 +244,8 @@ export default function Home() {
                 description:
                   "Submit a cryptographic commitment of your bid. The actual amount stays completely hidden from everyone.",
                 variant: "commit" as const,
-                color: "text-blue-400",
-                bgGlow: "bg-blue-500/10",
+                color: "text-indigo-400",
+                bgGlow: "bg-indigo-500/10",
               },
               {
                 step: 2,
@@ -301,9 +301,9 @@ export default function Home() {
           {/* Connection lines (desktop only) */}
           <div className="hidden md:flex justify-center mt-8">
             <div className="flex items-center gap-4 text-veil-text-dim">
-              <div className="w-24 h-px bg-gradient-to-r from-blue-500/50 to-veil-purple/50" />
+              <div className="w-24 h-px bg-linear-to-r from-indigo-500/50 to-veil-purple/50" />
               <ChevronRight className="w-5 h-5" />
-              <div className="w-24 h-px bg-gradient-to-r from-veil-purple/50 to-emerald-500/50" />
+              <div className="w-24 h-px bg-linear-to-r from-veil-purple/50 to-emerald-500/50" />
               <ChevronRight className="w-5 h-5" />
               <div className="w-24 h-px bg-emerald-500/50" />
             </div>
