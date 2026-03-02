@@ -5,11 +5,14 @@ use starknet::{ContractAddress, get_caller_address};
 
 #[starknet::interface]
 trait IVeilBidAuction<TContractState> {
-    /// Create a new auction. commit_end and reveal_end are block timestamps (e.g. from get_block_timestamp).
+    /// Create a new auction. commit_end and reveal_end are block timestamps (e.g. from
+    /// get_block_timestamp).
     fn create_auction(ref self: TContractState, commit_end: u64, reveal_end: u64);
-    /// Commit phase: submit commitment = poseidon_hash(bid_amount, nonce). Only callable before commit_end.
+    /// Commit phase: submit commitment = poseidon_hash(bid_amount, nonce). Only callable before
+    /// commit_end.
     fn commit_bid(ref self: TContractState, commitment: felt252);
-    /// Reveal phase: submit (bid_amount, nonce). Contract checks poseidon_hash(bid_amount, nonce) == commitment. Only callable between commit_end and reveal_end.
+    /// Reveal phase: submit (bid_amount, nonce). Contract checks poseidon_hash(bid_amount, nonce)
+    /// == commitment. Only callable between commit_end and reveal_end.
     fn reveal_bid(ref self: TContractState, bid_amount: u128, nonce: felt252);
     /// After reveal_end: mark auction as settled. Winner can be read via get_winner.
     fn settle(ref self: TContractState);
@@ -31,12 +34,14 @@ trait IVeilBidAuction<TContractState> {
 
 #[starknet::contract]
 mod VeilBidAuction {
-    use super::{ContractAddress, get_caller_address, IVeilBidAuction};
     use core::hash::HashStateTrait;
     use core::poseidon::PoseidonTrait;
-    use starknet::storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::SyscallResultTrait;
+    use starknet::storage::{
+        Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
     use starknet::syscalls::get_execution_info_syscall;
+    use super::{ContractAddress, IVeilBidAuction, get_caller_address};
 
     #[storage]
     struct Storage {
@@ -88,8 +93,7 @@ mod VeilBidAuction {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState) {
-        // Storage defaults to zero; first create_auction initializes.
+    fn constructor(ref self: ContractState) {// Storage defaults to zero; first create_auction initializes.
     }
 
     #[abi(embed_v0)]
@@ -112,8 +116,9 @@ mod VeilBidAuction {
             let now = get_block_timestamp();
             assert(now < self.commit_end.read(), 'Commit phase ended');
             let caller = get_caller_address();
-            let existing = self.commitments.entry(caller).read();
-            assert(existing == 0, 'Already committed');
+            // We allow overwriting commitments within the same commit phase.
+            // This prevents a bug where users who didn't reveal in previous auctions
+            // are permanently locked out of future auctions due to uncleared storage.
             self.commitments.entry(caller).write(commitment);
             self.emit(BidCommitted { bidder: caller });
         }
@@ -129,6 +134,10 @@ mod VeilBidAuction {
             assert(expected_commitment != 0, 'No commitment');
             let computed = poseidon_hash_bid_nonce(bid_amount, nonce);
             assert(computed == expected_commitment, 'Invalid reveal');
+
+            // Clear commitment after successful reveal so user can bid in future auctions
+            self.commitments.entry(caller).write(0);
+
             let current_best = self.highest_bid.read();
             if bid_amount > current_best {
                 self.highest_bid.write(bid_amount);
@@ -145,13 +154,13 @@ mod VeilBidAuction {
             let winner = self.winner.read();
             let amount = self.highest_bid.read();
             self.emit(AuctionSettled { winner, amount });
-            
+
             // Reset auction state to allow creating a new auction
             self.commit_end.write(0);
             self.reveal_end.write(0);
             self.highest_bid.write(0);
             // Note: We keep winner and settled for historical record
-            // Creator and commitments map persist but will be overwritten in next auction
+        // Creator and commitments map persist but will be overwritten in next auction
         }
 
         fn get_commit_end(self: @ContractState) -> u64 {

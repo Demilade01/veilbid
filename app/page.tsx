@@ -143,7 +143,7 @@ export default function Home() {
           >
             Private Bitcoin Auctions
             <br />
-            <span 
+            <span
               className="text-transparent bg-clip-text text-glow-strong"
               style={{ backgroundImage: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 50%, #6D28D9 100%)' }}
             >
@@ -167,7 +167,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.7 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12"
           >
             <Link href="/auctions">
               <GlowButton variant="glow" size="xl">
@@ -176,7 +176,7 @@ export default function Home() {
                 <ArrowRight className="w-5 h-5" />
               </GlowButton>
             </Link>
-            <div className="scale-[1.4]">
+            <div className="scale-[1.4] mt-4 sm:mt-0 sm:ml-6">
               <WalletButton />
             </div>
           </motion.div>
@@ -333,7 +333,7 @@ export default function Home() {
               <h2 className="text-3xl sm:text-4xl font-bold text-veil-text mb-6">
                 Your Bids Are
                 <br />
-                <span 
+                <span
                   className="text-transparent bg-clip-text"
                   style={{ backgroundImage: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 50%, #6D28D9 100%)' }}
                 >

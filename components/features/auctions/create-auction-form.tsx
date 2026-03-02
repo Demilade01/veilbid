@@ -44,7 +44,7 @@ export function CreateAuctionForm() {
       await sendAsync([call]);
     } catch (err) {
       console.error("Create auction error:", err);
-      
+
       // Parse the error message
       let errorMessage = "Failed to create auction";
       if (err instanceof Error) {
@@ -54,7 +54,7 @@ export function CreateAuctionForm() {
           errorMessage = err.message;
         }
       }
-      
+
       setError(errorMessage);
     }
   };
@@ -87,7 +87,7 @@ export function CreateAuctionForm() {
   if (hasAuction) {
     const isEnded = phase === "ended";
     const isSettled = phase === "settled";
-    
+
     return (
       <GlassCard variant="elevated">
         <GlassCardContent className="flex flex-col items-center justify-center py-8 text-center">
@@ -98,9 +98,9 @@ export function CreateAuctionForm() {
             {isSettled ? "Contract Needs Upgrade" : isEnded ? "Auction Awaiting Settlement" : "Auction Active"}
           </p>
           <p className="text-veil-text-muted text-sm">
-            {isSettled 
+            {isSettled
               ? "This contract is using an old version that doesn't allow creating new auctions after settlement. Please deploy the updated contract."
-              : isEnded 
+              : isEnded
               ? "The auction has ended. Call settle() to finalize it and allow new auctions."
               : "An auction is currently in progress. Wait for it to end and settle before creating a new one."
             }
@@ -157,7 +157,7 @@ export function CreateAuctionForm() {
               exit={{ opacity: 0, height: 0 }}
               className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30"
             >
-              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
               <p className="text-sm text-red-400">{error}</p>
             </motion.div>
           )}
