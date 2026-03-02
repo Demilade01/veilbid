@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Clock, AlertCircle, Loader2, Wallet } from "lucide-react";
-import { useAccount, useSendTransaction } from "@starknet-react/core";
+import { toast } from "sonner";
+import { useAccount, useSendTransaction, useTransactionReceipt } from "@starknet-react/core";
 import { useAuctionContract, useAuctionState } from "@/hooks/use-auction-contract";
 import {
   GlassCard,
@@ -19,7 +20,15 @@ export function CreateAuctionForm() {
   const { isConnected } = useAccount();
   const { contract } = useAuctionContract();
   const { hasAuction, phase, isLoading: loadingState } = useAuctionState();
-  const { sendAsync, isPending } = useSendTransaction({});
+  const { sendAsync, data: txData, isPending: isSigning } = useSendTransaction({});
+
+  // Track on-chain status
+  const { isLoading: isConfirming } = useTransactionReceipt({
+    hash: txData?.transaction_hash,
+    watch: true,
+  });
+
+  const isPending = isSigning || isConfirming;
 
   const [commitMinutes, setCommitMinutes] = useState("5");
   const [revealMinutes, setRevealMinutes] = useState("5");
@@ -41,7 +50,13 @@ export function CreateAuctionForm() {
       const revealEnd = commitEnd + Number(revealMinutes) * 60;
 
       const call = contract.populate("create_auction", [commitEnd, revealEnd]);
-      await sendAsync([call]);
+      const result = await sendAsync([call]);
+
+      if (result?.transaction_hash) {
+        toast.success("Transaction submitted!", {
+          description: "Waiting for blockchain confirmation...",
+        });
+      }
     } catch (err) {
       console.error("Create auction error:", err);
 
@@ -56,6 +71,9 @@ export function CreateAuctionForm() {
       }
 
       setError(errorMessage);
+      toast.error("Error creating auction", {
+        description: errorMessage,
+      });
     }
   };
 
@@ -101,8 +119,8 @@ export function CreateAuctionForm() {
             {isSettled
               ? "This contract is using an old version that doesn't allow creating new auctions after settlement. Please deploy the updated contract."
               : isEnded
-              ? "The auction has ended. Call settle() to finalize it and allow new auctions."
-              : "An auction is currently in progress. Wait for it to end and settle before creating a new one."
+                ? "The auction has ended. Call settle() to finalize it and allow new auctions."
+                : "An auction is currently in progress. Wait for it to end and settle before creating a new one."
             }
           </p>
         </GlassCardContent>
